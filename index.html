@@ -1,0 +1,1900 @@
+{% comment %} 
+Este arquivo precisa ser executado em um servidor Flask para funcionar corretamente.
+Certifique-se de que o Flask está instalado e configurado corretamente.
+É necessario o codigo completo do "Assinatura_digital.py" para executar este HTML em sua totalidade.
+O código JavaScript contido no arquivo "assinar_pdfs.js" támbém é necessário para o funcionamento correto do modal e das interações da página.
+Certifique-se de que o arquivo "assinar_pdfs.js" está localizado na pasta "static" do seu projeto Flask.
+O CSS inline foi utilizado para simplificar o exemplo, mas recomenda-se utilizar um arquivo CSS separado
+{% endcomment %}
+
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assinatura Digital de PDFs</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); 
+            min-height: 100vh; 
+            padding: 20px; 
+            color: #e0e0e0;
+        }
+        .container { 
+            max-width: 800px; 
+            margin: 0 auto; 
+            background: #1e1e2e; 
+            border-radius: 15px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
+            overflow: hidden; 
+            border: 1px solid #333;
+        }
+        .header { 
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); 
+            color: white; 
+            padding: 30px; 
+            text-align: center; 
+        }
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .header p { font-size: 1.1em; opacity: 0.9; }
+        .tabs { 
+            display: flex; 
+            background: #2a2a3e; 
+            border-bottom: 1px solid #444;
+        }
+        .tab-button { 
+            flex: 1; 
+            padding: 15px; 
+            background: none; 
+            border: none; 
+            cursor: pointer; 
+            font-size: 16px; 
+            font-weight: 600; 
+            color: #b0b0b0; 
+            transition: all 0.3s; 
+        }
+        .tab-button.active { 
+            background: #1e1e2e; 
+            color: #64b5f6; 
+            border-bottom: 3px solid #64b5f6; 
+        }
+        .tab-button:hover {
+            background: #333346;
+            color: #e0e0e0;
+        }
+        .tab-content { 
+            display: none; 
+            padding: 40px; 
+            background: #1e1e2e;
+        }
+        .tab-content.active { display: block; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { 
+            display: block; 
+            margin-bottom: 8px; 
+            font-weight: 600; 
+            color: #e0e0e0; 
+        }
+        .form-group input { 
+            width: 100%; 
+            padding: 12px; 
+            border: 2px solid #444; 
+            border-radius: 8px; 
+            font-size: 16px; 
+            transition: border-color 0.3s; 
+            background: #2a2a3e;
+            color: #e0e0e0;
+        }
+        .form-group input:focus { 
+            outline: none; 
+            border-color: #64b5f6; 
+            background: #333346;
+        }
+        .form-group input:disabled {
+            background: #3a3a4e;
+            color: #888;
+            border-color: #555;
+        }
+        .file-upload { 
+            border: 2px dashed #64b5f6; 
+            border-radius: 10px; 
+            padding: 40px; 
+            text-align: center; 
+            cursor: pointer; 
+            transition: all 0.3s; 
+            margin-bottom: 20px; 
+            background: #2a2a3e;
+            color: #e0e0e0;
+        }
+        .file-upload:hover { 
+            background: #333346; 
+            border-color: #81c784;
+        }
+        .file-upload input { display: none; }
+        .file-info { 
+            margin-top: 10px; 
+            padding: 10px; 
+            background: #1565c0; 
+            border-radius: 5px; 
+            color: #e3f2fd; 
+        }
+        .btn { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            color: white; 
+            border: none; 
+            padding: 15px 30px; 
+            border-radius: 8px; 
+            font-size: 16px; 
+            font-weight: 600; 
+            cursor: pointer; 
+            transition: transform 0.3s; 
+            width: 100%; 
+        }
+        .btn:hover { 
+            transform: translateY(-2px); 
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        .btn:disabled {
+            background: #555;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .result { 
+            margin-top: 20px; 
+            padding: 20px; 
+            border-radius: 8px; 
+            display: none; 
+        }
+        .result.success { 
+            background: #1b5e20; 
+            color: #c8e6c9; 
+            border: 1px solid #2e7d32; 
+        }
+        .result.error { 
+            background: #b71c1c; 
+            color: #ffcdd2; 
+            border: 1px solid #d32f2f; 
+        }
+        .aceite-section { 
+            background: #2a2a3e; 
+            padding: 20px; 
+            border-radius: 8px; 
+            margin-bottom: 20px; 
+            border: 1px solid #444;
+        }
+        .aceite-section label { 
+            display: flex; 
+            align-items: center; 
+            cursor: pointer; 
+            color: #e0e0e0;
+        }
+        .aceite-section input[type="checkbox"] { margin-right: 10px; }
+        #aceite-info { 
+            display: none; 
+            margin-top: 10px; 
+            color: #81c784; 
+            font-weight: 600; 
+        }
+        .documentation { 
+            background: #2a2a3e; 
+            border-radius: 8px; 
+            padding: 30px; 
+            font-size: 14px; 
+            line-height: 1.6; 
+            color: #e0e0e0; 
+            max-height: 600px; 
+            overflow-y: auto; 
+            border: 1px solid #444;
+        }
+        .documentation h2 { 
+            color: #64b5f6; 
+            margin: 25px 0 15px 0; 
+            font-size: 1.4em; 
+        }
+        .documentation h3 { 
+            color: #81c784; 
+            margin: 20px 0 10px 0; 
+            font-size: 1.2em; 
+        }
+        .documentation h4 { 
+            color: #ffb74d; 
+            margin: 15px 0 8px 0; 
+            font-size: 1.1em; 
+        }
+        .documentation p { 
+            margin-bottom: 10px; 
+            text-align: justify; 
+            color: #e0e0e0;
+        }
+        .documentation ul { 
+            margin: 10px 0 10px 20px; 
+            color: #e0e0e0;
+        }
+        .documentation li { 
+            margin-bottom: 5px; 
+        }
+        .documentation strong { 
+            color: #64b5f6; 
+        }
+        .doc-section { 
+            border-left: 4px solid #64b5f6; 
+            padding-left: 15px; 
+            margin: 20px 0; 
+            background: #1e1e2e; 
+            padding: 15px; 
+            border-radius: 5px; 
+            border: 1px solid #444;
+        }
+        .verify-section {
+            background: #1e1e2e;
+        }
+        .verify-section.active {
+            display: block;
+        }
+        .tab {
+            background: #2a2a3e;
+            color: #b0b0b0;
+            border: 1px solid #444;
+            padding: 10px 15px;
+            margin-right: 5px;
+            border-radius: 5px 5px 0 0;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .tab.active {
+            background: #1e1e2e;
+            color: #64b5f6;
+            border-bottom-color: #1e1e2e;
+        }
+        .tab:hover {
+            background: #333346;
+            color: #e0e0e0;
+        }
+        .account-section {
+            background: #1e1e2e;
+        }
+        
+        /* Sobrescrever estilos inline para tema escuro */
+        div[style*="background: #fff3cd"] {
+            background: #3e2723 !important;
+            border-color: #8d6e63 !important;
+        }
+        div[style*="background: #fff3cd"] h4,
+        div[style*="background: #fff3cd"] p {
+            color: #ffcc02 !important;
+        }
+        
+        div[style*="background: #e3f2fd"] {
+            background: #0d47a1 !important;
+            border-color: #1976d2 !important;
+        }
+        div[style*="background: #e3f2fd"] h3,
+        div[style*="background: #e3f2fd"] p {
+            color: #e3f2fd !important;
+        }
+        
+        div[style*="background: #d4edda"] {
+            background: #1b5e20 !important;
+            border-color: #2e7d32 !important;
+        }
+        div[style*="background: #d4edda"] h4,
+        div[style*="background: #d4edda"] p {
+            color: #c8e6c9 !important;
+        }
+        
+        div[style*="background: #e8f5e8"] {
+            background: #1b5e20 !important;
+            border-color: #2e7d32 !important;
+        }
+        div[style*="background: #e8f5e8"] h4,
+        div[style*="background: #e8f5e8"] p {
+            color: #c8e6c9 !important;
+        }
+        
+        /* Corrigir caixa de verificação - fundo escuro e texto verde escuro */
+        div[style*="background: #e8f4f8"] {
+            background: #2a2a3e !important;
+            border: 1px solid #444 !important;
+        }
+        div[style*="background: #e8f4f8"] strong {
+            color: #4caf50 !important; /* Verde claro/brilhante para melhor contraste */
+        }
+        
+        /* Colorir de vermelho apenas o texto "Arquivo NÃO encontrado no blockchain" */
+        div[style*="background: #e8f4f8"] strong:contains("❌") {
+            color: #f44336 !important; /* Vermelho para mensagens de erro do blockchain */
+        }
+        
+        /* Manter verde para mensagens de sucesso do blockchain */
+        div[style*="background: #e8f4f8"] strong:contains("✅") {
+            color: #4caf50 !important; /* Verde para mensagens de sucesso */
+        }
+        
+        div[style*="background: #f8f9fa"] {
+            background: #2a2a3e !important;
+        }
+        
+        div[style*="background: #fff3e0"] {
+            background: #3e2723 !important;
+            border-left-color: #ff9800 !important;
+        }
+        
+        div[style*="background: #f0f8ff"] {
+            background: #0d47a1 !important;
+        }
+        
+        div[style*="background: #ffebee"] {
+            background: #b71c1c !important;
+        }
+        div[style*="background: #ffebee"] h4,
+        div[style*="background: #ffebee"] ul li {
+            color: #ffcdd2 !important;
+        }
+        
+        /* Tabelas */
+        table {
+            background: #2a2a3e !important;
+            color: #e0e0e0;
+        }
+        th {
+            background: #1e1e2e !important;
+            color: #64b5f6 !important;
+            border-color: #444 !important; 
+        }
+        td {
+            border-color: #444 !important;
+            color: #e0e0e0 !important;
+        }
+        tr:nth-child(even) {
+            background: #333346 !important;
+        }
+        
+        /* Aplicar texto preto apenas para células com classe específica */
+        .texto-preto {
+            color: #1a1a1a !important;
+        }
+        
+        /* Corrigir apenas os textos específicos mencionados */
+        td:nth-child(3) {
+            color: #e0e0e0 !important; /* Manter branco para observações */
+        }
+        td:nth-child(3):contains("Workflows, aprovações, atas internas"),
+        td:nth-child(3):contains("Acordos comerciais de menor complexidade"),
+        td:nth-child(3):contains("Rastreabilidade de alterações documentais") {
+            color: #1a1a1a !important; /* Preto apenas para estes 3 textos */
+        }
+        
+        /* Modal */
+        #userKeyModal > div {
+            background: #1e1e2e !important;
+            color: #e0e0e0 !important;
+            border: 1px solid #444;
+        }
+        #userKeyModal h3 {
+            color: #64b5f6 !important;
+        }
+        #userKeyModal > div > div:nth-child(2) {
+            background: #2a2a3e !important;
+            border-color: #64b5f6 !important;
+        }
+        #userKeyModal h2 {
+            color: #64b5f6 !important;
+        }
+        #userKeyModal p {
+            color: #e0e0e0 !important;
+        }
+        #userKeyModal button {
+            background: #64b5f6 !important;
+        }
+        
+        /* Small elements */
+        small {
+            color: #b0b0b0 !important;
+        }
+          /* Scrollbar para dark theme */
+        .documentation::-webkit-scrollbar {
+            width: 8px;
+        }
+        .documentation::-webkit-scrollbar-track {
+            background: #2a2a3e;
+        }
+        .documentation::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 4px;
+        }
+        .documentation::-webkit-scrollbar-thumb:hover {
+            background: #777; 
+        }
+
+        /* ===== ESTILOS PARA BARRA DE FORÇA DE SENHA ===== */
+        .password-strength-container {
+            margin-top: 8px;
+        }
+
+        .password-strength-bar {
+            width: 100%;
+            height: 8px;
+            background: #444;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 8px;
+            border: 1px solid #555;
+        }
+
+        .password-strength-fill {
+            height: 100%;
+            width: 0%;
+            background: #dc3545;
+            transition: all 0.4s ease-in-out;
+            border-radius: 4px;
+            position: relative;
+        }
+
+        .password-strength-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, 
+                transparent 25%, 
+                rgba(255,255,255,0.1) 25%, 
+                rgba(255,255,255,0.1) 50%, 
+                transparent 50%, 
+                transparent 75%, 
+                rgba(255,255,255,0.1) 75%);
+            background-size: 8px 8px;
+            animation: progress-stripes 0.5s linear infinite;
+        }
+
+        @keyframes progress-stripes {
+            0% { background-position: 0 0; }
+            100% { background-position: 8px 0; }
+        }
+
+        .password-strength-text {
+            font-size: 13px;
+            font-weight: 600;
+            color: #b0b0b0;
+            transition: color 0.3s ease;
+            margin-bottom: 5px;
+        }
+
+        .password-hints {
+            background: #2a2a3e;
+            border: 1px solid #444;
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+
+        .password-hints small {
+            color: #b0b0b0 !important;
+            font-weight: 600;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .password-hints ul {
+            margin: 0;
+            padding-left: 16px;
+            list-style-type: none;
+        }
+
+        .password-hints li {
+            color: #dc3545;
+            margin-bottom: 4px;
+            position: relative;
+            padding-left: 16px;
+        }
+
+        .password-hints li::before {
+            content: '❌';
+            position: absolute;
+            left: 0;
+            font-size: 10px;
+        }
+
+        /* Estilos para diferentes níveis de força */
+        .password-strength-fill.very-weak {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        }
+
+        .password-strength-fill.weak {
+            background: linear-gradient(135deg, #fd7e14 0%, #e8590c 100%);
+        }
+
+        .password-strength-fill.medium {
+            background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+        }
+
+        .password-strength-fill.strong {
+            background: linear-gradient(135deg, #20c997 0%, #1aa179 100%);
+        }
+
+        .password-strength-fill.very-strong {
+            background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
+        }
+
+        /* Botão de cadastro desabilitado */
+        .btn:disabled {
+            background: #555 !important;
+            cursor: not-allowed !important;
+            transform: none !important;
+            opacity: 0.6;
+            box-shadow: none !important;
+        }
+
+        .btn:disabled:hover {
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        /* Mensagem de hint do botão */
+        #registerButtonHint {
+            font-size: 12px;
+            margin-top: 8px;
+            padding: 8px;
+            background: #2a2a3e;
+            border: 1px solid #dc3545;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        /* Animação suave para transições */
+        .form-group input,
+        .password-strength-fill,
+        .password-strength-text,
+        .btn {
+            transition: all 0.3s ease;
+        }
+
+        /* Campo de senha com foco especial */
+        #regPassword:focus {
+            border-color: #64b5f6 !important;
+            background: #333346 !important;
+            box-shadow: 0 0 0 2px rgba(100, 181, 246, 0.2);
+        }        /* Responsividade para dispositivos móveis */
+        @media (max-width: 768px) {
+            .password-strength-bar {
+                height: 10px;
+            }
+            
+            .password-strength-text {
+                font-size: 12px;
+            }
+            
+            .password-hints {
+                font-size: 11px;
+                padding: 10px;
+            }
+            
+            #registerButtonHint {
+                font-size: 11px;
+            }
+        }
+
+        /* ===== ESTILOS PARA EXCLUSÃO DE CONTA ===== */
+        
+        /* Aviso de atenção crítico */
+        .deletion-warning {
+            background: linear-gradient(135deg, #8b0000 0%, #dc3545 100%) !important;
+            border: 2px solid #dc3545 !important;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+            animation: subtle-pulse 3s ease-in-out infinite;
+        }
+
+        @keyframes subtle-pulse {
+            0%, 100% { box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3); }
+            50% { box-shadow: 0 6px 20px rgba(220, 53, 69, 0.5); }
+        }
+
+        .deletion-warning h4 {
+            color: #ffcccc !important;
+            font-size: 1.2em;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .deletion-warning h4::before {
+            content: '⚠️';
+            font-size: 1.5em;
+            animation: warning-blink 2s ease-in-out infinite;
+        }
+
+        @keyframes warning-blink {
+            0%, 50%, 100% { opacity: 1; }
+            25%, 75% { opacity: 0.6; }
+        }
+
+        .deletion-warning ul {
+            margin: 15px 0;
+            padding-left: 25px;
+            color: #ffcccc !important;
+        }
+
+        .deletion-warning ul li {
+            margin-bottom: 8px;
+            position: relative;
+        }
+
+        .deletion-warning ul li::before {
+            content: '🔒';
+            position: absolute;
+            left: -25px;
+            font-size: 14px;
+        }
+
+        /* Status de exclusão pendente */
+        #deletionPendingStatus {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%) !important;
+            border: 2px solid #ffc107 !important;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);
+            animation: pending-glow 2s ease-in-out infinite;
+        }
+
+        @keyframes pending-glow {
+            0%, 100% { box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3); }
+            50% { box-shadow: 0 6px 20px rgba(255, 193, 7, 0.5); }
+        }
+
+        #deletionPendingStatus h4 {
+            color: #856404 !important;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        #deletionPendingStatus h4::before {
+            content: '⏰';
+            font-size: 1.3em;
+            animation: clock-tick 1s ease-in-out infinite;
+        }
+
+        @keyframes clock-tick {
+            0%, 50%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(5deg); }
+            75% { transform: rotate(-5deg); }
+        }
+
+        /* Botões de ação na exclusão pendente */
+        #deletionPendingStatus button {
+            margin: 5px;
+            padding: 12px 18px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 13px;
+        }
+
+        #deletionPendingStatus button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        /* Formulário de exclusão */
+        #accountDeletionForm {
+            background: #2a2a3e;
+            padding: 25px;
+            border-radius: 10px;
+            border: 1px solid #444;
+            margin-top: 20px;
+        }
+
+        #accountDeletionForm .form-group {
+            margin-bottom: 20px;
+        }
+
+        #accountDeletionForm input {
+            background: #1e1e2e !important;
+            border: 2px solid #444 !important;
+            color: #e0e0e0 !important;
+            padding: 12px !important;
+            border-radius: 8px !important;
+            transition: all 0.3s ease;
+        }
+
+        #accountDeletionForm input:focus {
+            border-color: #dc3545 !important;
+            background: #333346 !important;
+            box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.2);
+        }
+
+        #accountDeletionForm input::placeholder {
+            color: #888 !important;
+        }
+
+        /* Checkbox de confirmação especial */
+        .deletion-confirmation {
+            background: #f8f9fa !important;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 5px solid #dc3545 !important;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .deletion-confirmation label {
+            display: flex !important;
+            align-items: center !important;
+            cursor: pointer !important;
+            font-weight: bold !important;
+            color: #dc3545 !important;
+            line-height: 1.4;
+        }
+
+        .deletion-confirmation input[type="checkbox"] {
+            margin-right: 15px !important;
+            transform: scale(1.3) !important;
+            accent-color: #dc3545;
+        }
+
+        /* Botão de exclusão */
+        .btn-delete {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
+            border: none !important;
+            color: white !important;
+            padding: 15px 30px !important;
+            border-radius: 8px !important;
+            font-size: 16px !important;
+            font-weight: 600 !important;
+            cursor: pointer !important;
+            transition: all 0.3s ease !important;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+        }
+
+        .btn-delete:hover {
+            transform: translateY(-3px) !important;
+            box-shadow: 0 6px 20px rgba(220, 53, 69, 0.5) !important;
+            background: linear-gradient(135deg, #c82333 0%, #a71e2a 100%) !important;
+        }
+
+        /* Modal de declaração legal */
+        #deletionDeclarationModal {
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+        }
+
+        #deletionDeclarationModal > div {
+            background: #1e1e2e !important;
+            border: 2px solid #444 !important;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.7) !important;
+            animation: modal-appear 0.3s ease-out;
+        }
+
+        @keyframes modal-appear {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(-60px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0) scale(1);
+            }
+        }
+
+        #deletionDeclarationModal h2 {
+            color: #dc3545 !important;
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 1.8em;
+        }
+
+        #deletionDeclarationModal h3 {
+            color: #b0b0b0 !important;
+            text-align: center;
+            margin-bottom: 25px;
+            font-weight: 400;
+        }
+
+        /* Conteúdo da declaração */
+        #deletionDeclarationContent {
+            background: #2a2a3e !important;
+            border: 1px solid #444 !important;
+            color: #e0e0e0 !important;
+            font-family: 'Georgia', serif;
+            scrollbar-width: thin;
+            scrollbar-color: #555 #2a2a3e;
+        }
+
+        #deletionDeclarationContent::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #deletionDeclarationContent::-webkit-scrollbar-track {
+            background: #2a2a3e;
+            border-radius: 4px;
+        }
+
+        #deletionDeclarationContent::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 4px;
+        }
+
+        #deletionDeclarationContent::-webkit-scrollbar-thumb:hover {
+            background: #777;
+        }
+
+        #deletionDeclarationContent p {
+            margin-bottom: 15px !important;
+            text-indent: 20px;
+            color: #e0e0e0 !important;
+        }
+
+        /* Aviso de 24 horas */
+        .hours-warning {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%) !important;
+            border: 2px solid #ffc107 !important;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 25px 0;
+        }
+
+        .hours-warning h4 {
+            color: #856404 !important;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .hours-warning h4::before {
+            content: '⏰';
+            font-size: 1.2em;
+        }
+
+        .hours-warning p {
+            color: #856404 !important;
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        /* Botões do modal */
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 30px;
+        }
+
+        .modal-buttons button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 13px;
+            min-width: 150px;
+        }
+
+        .modal-buttons button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        /* Botão excluir imediatamente */
+        .btn-immediate-delete {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
+            color: white !important;
+        }
+
+        .btn-immediate-delete:hover {
+            background: linear-gradient(135deg, #c82333 0%, #a71e2a 100%) !important;
+        }
+
+        /* Botão aguardar 24 horas */
+        .btn-wait-24h {
+            background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%) !important;
+            color: #856404 !important;
+        }
+
+        .btn-wait-24h:hover {
+            background: linear-gradient(135deg, #e0a800 0%, #d39e00 100%) !important;
+        }
+
+        /* Botão cancelar */
+        .btn-cancel-deletion {
+            background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%) !important;
+            color: white !important;
+        }
+
+        .btn-cancel-deletion:hover {
+            background: linear-gradient(135deg, #1e7e34 0%, #155724 100%) !important;
+        }
+
+        /* Indicador visual de processo crítico */
+        .critical-process {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .critical-process::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, 
+                transparent, 
+                rgba(220, 53, 69, 0.1), 
+                transparent);
+            animation: critical-sweep 3s ease-in-out infinite;
+        }
+
+        @keyframes critical-sweep {
+            0% { left: -100%; }
+            50% { left: 100%; }
+            100% { left: 100%; }
+        }
+
+        /* Responsividade para dispositivos móveis */
+        @media (max-width: 768px) {
+            #deletionDeclarationModal > div {
+                margin: 20px;
+                padding: 20px;
+                max-width: calc(100% - 40px);
+                top: 20px;
+                transform: translateX(-50%) translateY(0);
+            }
+            
+            .modal-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .modal-buttons button {
+                width: 100%;
+                max-width: 300px;
+                margin-bottom: 10px;
+            }
+            
+            .deletion-warning,
+            #deletionPendingStatus,
+            #accountDeletionForm {
+                padding: 15px;
+                margin-bottom: 15px;
+            }
+            
+            .deletion-warning h4 {
+                font-size: 1.1em;
+            }
+        }
+
+        /* Animação de atenção para elementos críticos */
+        .attention-blink {
+            animation: attention-blink 1.5s ease-in-out infinite;
+        }
+
+        @keyframes attention-blink {
+            0%, 50%, 100% { opacity: 1; }
+            25%, 75% { opacity: 0.7; }
+        }
+
+        /* Efeito hover para aba de exclusão */
+        .tab[onclick*="delete"]:hover {
+            background: #4a1a1a !important;
+            color: #ff6b6b !important;
+            border-color: #dc3545 !important;
+        }
+
+        /* Estado ativo da aba de exclusão */
+        .tab[onclick*="delete"].active {
+            background: #1e1e2e !important;
+            color: #ff6b6b !important;
+            border-bottom-color: #1e1e2e !important;
+            box-shadow: 0 -2px 10px rgba(220, 53, 69, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 Assinatura Digital</h1>
+            <p>Sistema de assinatura e verificação de documentos PDF</p>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab-button active" onclick="switchTab('sign')">Assinar PDF</button>
+            <button class="tab-button" onclick="switchTab('blockchain')">Registrar comprovante de validação de existência</button>
+            <button class="tab-button" onclick="switchTab('verify')">Verificar Assinatura</button>
+            <button class="tab-button" onclick="switchTab('account')">👤 Conta</button>
+            <button class="tab-button" onclick="switchTab('docs')">📋 Documentação</button>
+        </div>
+        
+        <div id="sign-tab" class="tab-content active">
+            <!-- Removido seletor de método - apenas assinatura autenticada -->
+            <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #ffc107;">
+                <h4 style="color: #856404; margin: 0 0 10px 0;">⚠️ Autenticação Obrigatória + CAdES</h4>
+                <p style="color: #856404; margin: 0;">Para garantir máxima segurança, a assinatura de documentos agora requer login com email, senha e chave de tripla validação. O sistema também gera assinatura CAdES (.p7s) junto com o PDF.</p>
+            </div>
+
+            <!-- Login form (sempre visível se não logado) -->
+            <div id="loginSection" style="background:rgb(0, 149, 255); padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                <h3>🔐 Login Seguro:</h3>
+                <div class="form-group">
+                    <label for="loginEmail">Email:</label>
+                    <input type="email" id="loginEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Senha:</label>
+                    <input type="password" id="loginPassword" required>
+                </div>
+                <div class="form-group">
+                    <label for="loginUserKey">Chave de Tripla Validação:</label>
+                    <input type="text" id="loginUserKey" required placeholder="Ex: ABC123" style="text-transform: uppercase;">
+                    <small style="color: #6c757d;">Esta chave foi gerada no seu cadastro baseada no seu email</small>
+                </div>
+                <div class="form-group">
+                    <label for="loginMathAnswer">Resolva: <span id="loginMathQuestion">Carregando...</span></label>
+                    <input type="number" id="loginMathAnswer" required placeholder="Digite a resposta">
+                    <input type="hidden" id="loginMathResult">
+                </div>
+                <button type="button" class="btn" onclick="loginUser()" style="width: auto;">🔓 Fazer Login</button>
+                <div id="loginResult" style="margin-top: 10px;"></div>
+            </div>
+
+            <!-- Status do usuário logado -->
+            <div id="userStatus" style="display: none; background:rgb(8, 8, 8); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <h4>✅ Usuário Autenticado:</h4>
+                <p id="userInfo"></p>
+                <button type="button" onclick="logoutUser()" style="background: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 4px;">Sair</button>
+            </div>
+
+            <form id="signForm">
+                <div class="form-group">
+                    <label for="fullName">Nome Completo:</label>
+                    <input type="text" id="fullName" name="fullName" required> 
+                </div>
+                
+                <div class="form-group">
+                    <label for="cpf">CPF:</label>
+                    <input type="text" id="cpf" name="cpf" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="dob">Data de Nascimento:</label>
+                    <input type="date" id="dob" name="dob" required>
+                </div>
+                
+                <div class="file-upload" onclick="document.getElementById('pdfInput').click()">
+                    <input type="file" id="pdfInput" accept=".pdf" required>
+                    <div id="sign-file-display">
+                        <strong>📄 Clique aqui ou arraste um PDF</strong>
+                    </div>
+                </div>
+                  <div class="aceite-section">
+                    <!-- Botão para ler o termo de aceite -->
+                    <div style="margin-bottom: 15px; text-align: center;">
+                        <button type="button" onclick="showTermsModal()" style="background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 14px;">
+                            📋 Ler Termo de Aceite Completo
+                        </button>
+                    </div>
+                    
+                    <label>
+                        <input type="checkbox" id="aceiteCheckbox" required>
+                        Aceito os termos de uso e autorizo a assinatura digital deste documento
+                    </label>
+                    <div id="aceite-info"></div>
+                </div>
+                
+                <!-- Campo matemático para assinatura -->
+                <div class="form-group" id="signMathSection" style="display: none;">
+                    <label for="signMathAnswer">🔢 Confirme sua identidade resolvendo: <span id="signMathQuestion">Carregando...</span></label>
+                    <input type="number" id="signMathAnswer" required placeholder="Digite a resposta">
+                    <input type="hidden" id="signMathResult">
+                </div>
+                
+                <button type="button" class="btn" onclick="signPdf()" id="signButton" disabled>🔏 Fazer Login Para Assinar</button>
+            </form>
+            
+            <div id="signResult" class="result"></div>
+        </div>
+        
+        <div id="blockchain-tab" class="tab-content">
+            <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #28a745;">
+                <h4 style="color: #155724; margin: 0 0 10px 0;">🔗 Registro Blockchain</h4>
+                <p style="color: #155724; margin: 0;">Registre qualquer tipo de arquivo com tecnologia blockchain. Gera um arquivo .ots para validação.</p>
+                <p style="color: #155724; margin: 0;">"ots" significa OpenTimestamps. É um arquivo de carimbo do tempo (timestamp) baseado em blockchain, que prova que um determinado documento existia em um momento específico, sem revelar seu conteúdo.</p>
+                <p style="color: #155724; margin: 0;">Esse .ots não é o documento assinado, mas sim um comprovante de validação de existência via blockchain. Ele funciona como um recibo criptográfico que pode ser verificado publicamente. Para validar depois, você usa o .ots junto do documento original para provar que ele existia naquela data.</p>
+                <p style="color: #155724; margin: 0;">O registro em blockchain é uma forma segura e imutável de garantir a integridade e a autenticidade dos documentos. E serve como comprovação que um documento não foi adulterado.</p>
+            </div>
+
+            <!-- Login necessário para blockchain também -->
+            <div id="blockchainLoginSection" style="background: #e3f2fd; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                <h3>🔐 Login Necessário</h3>
+                <p>Para assinar documentos com blockchain, você deve estar logado. Use a aba "Conta" para fazer login.</p>
+            </div>
+
+            <!-- Status do usuário logado para blockchain -->
+            <div id="blockchainUserStatus" style="display: none; background:rgb(0, 0, 0); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <h4>✅ Usuário Autenticado:</h4>
+                <p id="blockchainUserInfo"></p>
+            </div>
+
+            <form id="blockchainForm">
+                <div class="file-upload" onclick="document.getElementById('blockchainFileInput').click()">
+                    <input type="file" id="blockchainFileInput" accept="*/*" required>
+                    <div id="blockchain-file-display">
+                        <strong>📄 Clique aqui para selecionar qualquer arquivo</strong>
+                        <br><small>Qualquer tipo de arquivo é aceito</small>
+                    </div>
+                </div>
+
+                <!-- Campo matemático para assinatura blockchain -->
+                <div class="form-group" id="blockchainMathSection" style="display: none;">
+                    <label for="blockchainMathAnswer">🔢 Confirme sua identidade resolvendo: <span id="blockchainMathQuestion">Carregando...</span></label>
+                    <input type="number" id="blockchainMathAnswer" required placeholder="Digite a resposta">
+                    <input type="hidden" id="blockchainMathResult">
+                </div>
+
+                <button type="button" class="btn" onclick="generateOTS()" id="blockchainButton" disabled>🔗 Fazer Login Para Assinar</button>
+            </form>
+
+            <div id="blockchainResult" class="result"></div>
+
+            <!-- Seção de verificação de .ots -->
+            <div style="margin-top: 40px; padding-top: 30px; border-top: 2px solid #e9ecef;">
+                <h3>🔍 Verificar Autenticidade do arquivo OpenTimestamps(.ots)</h3>
+                <p>Selecione o arquivo original e o arquivo .ots para verificar a autenticidade:</p>
+
+                <form id="verifyOtsForm">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+                        <div>
+                            <h4>Arquivo Original</h4>
+                            <div class="file-upload" onclick="document.getElementById('originalFileInput').click()">
+                                <input type="file" id="originalFileInput" accept="*/*" required>
+                                <div id="original-file-display">
+                                    <strong>📄 Arquivo Original</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h4>Arquivo .ots</h4>
+                            <div class="file-upload" onclick="document.getElementById('otsFileInput').click()">
+                                <input type="file" id="otsFileInput" accept=".ots" required>
+                                <div id="ots-file-display">
+                                    <strong>🔐 Arquivo .ots</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn" onclick="verifyOTS()" style="margin-top: 20px;">✅ Verificar Autenticidade</button>
+                </form>
+
+                <div id="verifyOtsResult" class="result"></div>
+            </div>
+        </div>
+
+        <div id="verify-tab" class="tab-content">
+            <div class="tabs">
+                <button class="tab-button active" onclick="switchVerifyTab('normal')">Verificação Normal</button>
+                <button class="tab-button" onclick="switchVerifyTab('cades')">Verificação com Certificado Digital</button>
+            </div>
+
+            <div id="normal-verify" class="verify-section active">
+                <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solidrgb(98, 3, 250);">
+                    <h4 style="color:rgb(21, 255, 0); margin: 0 0 10px 0;">ℹ️ Verificação Normal</h4>
+                    <p style="color:rgb(0, 4, 240); margin: 0;">Verifica apenas o PDF assinado através dos metadados internos e blockchain.</p>
+                </div>
+                
+                <div class="file-upload" onclick="document.getElementById('signedPdfInput').click()">
+                    <input type="file" id="signedPdfInput" accept=".pdf" required>
+                    <div id="verify-file-display">
+                        <strong>🔍 Selecione o PDF assinado para verificação</strong>
+                    </div>
+                </div>
+                
+                <button type="button" class="btn" onclick="verifySignature()">✅ Verificar Assinatura</button>
+                
+                <div id="verifyResult" class="result"></div>
+            </div>
+
+            <div id="cades-verify" class="verify-section" style="display:none;">
+                <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #4caf50;">
+                    <h4 style="color: #2e7d32; margin: 0 0 10px 0;">🔐 Verificação certificado digital (Mais Segura)</h4>
+                    <p style="color: #2e7d32; margin: 0;">Verifica o PDF usando assinatura CAdES (.p7s) com chaves assimétricas RSA.</p>
+                    <p style="color: #2e7d32; margin: 5px 0 0 0;"><strong>Requer:</strong> PDF assinado + arquivo .p7s (ambos vêm no ZIP baixado)</p>
+                </div>
+
+                <div class="file-upload" onclick="document.getElementById('cadesSignedPdfInput').click()">
+                    <input type="file" id="cadesSignedPdfInput" accept=".pdf" required>
+                    <div id="cades-verify-pdf-display">
+                        <strong>🔍 Selecione o PDF assinado</strong>
+                        <br><small>Extraia do arquivo ZIP baixado</small>
+                    </div>
+                </div>
+
+                <div class="file-upload" onclick="document.getElementById('p7sFileInput').click()">
+                    <input type="file" id="p7sFileInput" accept=".p7s" required>
+                    <div id="cades-verify-p7s-display">
+                        <strong>🔐 Selecione o arquivo .p7s</strong>
+                        <br><small>Extraia do arquivo ZIP baixado</small>
+                    </div>
+                </div>
+                
+                <button type="button" class="btn" onclick="verifyCadesSignature()">✅ Verificar Assinatura Digital</button>
+                
+                <div id="cadesVerifyResult" class="result"></div>
+            </div>
+        </div>        <!-- Aba de conta atualizada -->
+        <div id="account-tab" class="tab-content">
+            <div class="tabs" style="margin-bottom: 20px;">
+                <button class="tab active" onclick="switchAccountTab('register')">Cadastrar</button>
+                <button class="tab" onclick="switchAccountTab('login')">Login</button>
+                <button class="tab" onclick="switchAccountTab('delete')">🗑️ Excluir Conta</button>
+            </div>            <!-- Cadastro -->
+            <div id="register-section" class="account-section">
+                <h2>📝 Cadastrar Usuário</h2>
+                <p>Crie uma conta para assinatura autenticada com email, senha e chave de tripla validação:</p>
+                
+                <!-- Aviso sobre senha forte -->
+                <div style="background: #1b5e20; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #2e7d32;">
+                    <h4 style="color: #c8e6c9; margin: 0 0 10px 0;">🔒 Requisitos de Senha Segura</h4>
+                    <p style="color: #c8e6c9; margin: 0; font-size: 14px;">
+                        Por segurança, apenas senhas com nível <strong>MÉDIO</strong> ou superior são aceitas. 
+                        A barra abaixo mostrará a força da sua senha em tempo real.
+                    </p>
+                </div>
+                
+                <form id="registerForm">
+                    <div class="form-group">
+                        <label for="regEmail">Email:</label>
+                        <input type="email" id="regEmail" required>
+                    </div>
+                      <div class="form-group">
+                        <label for="regPassword">Senha:</label>
+                        <input type="password" id="regPassword" required minlength="6">
+                        
+                        <!-- Barra de força da senha -->
+                        <div class="password-strength-container" style="margin-top: 8px;">
+                            <div class="password-strength-bar">
+                                <div id="passwordStrengthFill" class="password-strength-fill"></div>
+                            </div>
+                            <div id="passwordStrengthText" class="password-strength-text">Digite uma senha</div>
+                        </div>
+                        
+                        <!-- Dicas de senha -->
+                        <div id="passwordHints" class="password-hints" style="display: none;">
+                            <small>A senha deve conter:</small>
+                            <ul id="passwordHintsList"></ul>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="regFullName">Nome Completo:</label>
+                        <input type="text" id="regFullName" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="regCpf">CPF:</label>
+                        <input type="text" id="regCpf" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="regDob">Data de Nascimento:</label>
+                        <input type="date" id="regDob" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="regMathAnswer">🔢 Resolva: <span id="regMathQuestion">Carregando...</span></label>
+                        <input type="number" id="regMathAnswer" required placeholder="Digite a resposta">
+                        <input type="hidden" id="regMathResult">
+                    </div>
+                    
+                    <button type="button" class="btn" id="registerButton" onclick="registerUser()" disabled>📝 Cadastrar</button>
+                    <small id="registerButtonHint" style="color: #dc3545; display: block; margin-top: 5px;">
+                        ⚠️ Preencha todos os campos e use uma senha com nível médio ou superior
+                    </small>
+                </form>
+                
+                <div id="registerResult" class="result"></div>
+                
+                <!-- Modal para exibir chave do usuário -->
+                <div id="userKeyModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
+                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 10px; text-align: center; max-width: 400px;">
+                        <h3 style="color: #007bff; margin-bottom: 20px;">🔑 Sua Chave de Tripla Validação</h3>
+                        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border: 2px solid #007bff;">
+                            <h2 id="userKeyDisplay" style="color: #007bff; font-family: monospace; letter-spacing: 3px;"></h2>
+                        </div>
+                        <p style="color: #dc3545; font-weight: bold;">⚠️ IMPORTANTE: Salve esta chave em local seguro!</p>
+                        <p style="font-size: 14px; color: #6c757d;">Esta chave é baseada no seu email e será necessária para todos os logins.</p>
+                        <button onclick="closeUserKeyModal()" style="background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Entendi, salvei a chave!</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Login standalone -->
+            <div id="login-section" class="account-section" style="display: none;">
+                <h2>🔓 Login</h2>
+                <p>Faça login em sua conta:</p>
+                
+                <!-- Status do usuário logado na aba Login -->
+                <div id="loginAccountStatus" style="display: none; background: #1b5e20; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #2e7d32;">
+                    <h4 style="color: #c8e6c9;">✅ Usuário Autenticado:</h4>
+                    <p id="loginAccountInfo" style="color: #c8e6c9;"></p>
+                    <button type="button" onclick="logoutUser()" style="background: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 4px;">Sair</button>
+                </div>
+                
+                <form id="standaloneLoginForm">
+                    <div class="form-group">
+                        <label for="standaloneEmail">Email:</label>
+                        <input type="email" id="standaloneEmail" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="standalonePassword">Senha:</label>
+                        <input type="password" id="standalonePassword" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="standaloneUserKey">Chave de Tripla Validação:</label>
+                        <input type="text" id="standaloneUserKey" required placeholder="Ex: ABC123" style="text-transform: uppercase;">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="standaloneMathAnswer">Resolva: <span id="standaloneMathQuestion">Carregando...</span></label>
+                        <input type="number" id="standaloneMathAnswer" required placeholder="Digite a resposta">
+                        <input type="hidden" id="standaloneMathResult">
+                    </div>
+                    
+                    <button type="button" class="btn" onclick="standaloneLogin()">🔓 Fazer Login</button>
+                </form>
+                
+                <div id="standaloneLoginResult" class="result"></div>
+            </div>
+
+            <!-- Nova seção: Excluir Conta -->
+            <div id="delete-section" class="account-section" style="display: none;">
+                <h2>🗑️ Excluir Conta</h2>
+                
+                <!-- Aviso importante sobre exclusão -->
+                <div style="background: #8b0000; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 2px solid #dc3545;">
+                    <h4 style="color: #ffcccc; margin: 0 0 15px 0;">⚠️ ATENÇÃO: EXCLUSÃO PERMANENTE</h4>
+                    <div style="color: #ffcccc; font-size: 14px; line-height: 1.6;">
+                        <p><strong>Esta ação é IRREVERSÍVEL!</strong> Para excluir sua conta, você deve confirmar todos os seus dados:</p>
+                        <ul style="margin: 10px 0; padding-left: 20px;">
+                            <li>Nome completo exato</li>
+                            <li>Email de cadastro</li>
+                            <li>Senha atual</li>
+                            <li>CPF</li>
+                            <li>Data de nascimento</li>
+                            <li>Chave de tripla validação</li>
+                            <li>Resolver desafio matemático</li>
+                        </ul>
+                        <p><strong>IMPORTANTE:</strong> As assinaturas digitais realizadas anteriormente permanecerão válidas mesmo após a exclusão da conta.</p>
+                    </div>
+                </div>
+
+                <!-- Status de exclusão pendente -->
+                <div id="deletionPendingStatus" style="display: none; background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #ffc107;">
+                    <h4 style="color: #856404; margin: 0 0 10px 0;">⏰ Exclusão Agendada</h4>
+                    <p id="deletionStatusMessage" style="color: #856404; margin: 0;"></p>
+                    <div style="margin-top: 15px;">
+                        <button type="button" onclick="confirmImmediateDeletion()" style="background: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 4px; margin-right: 10px;">🗑️ Excluir Agora</button>
+                        <button type="button" onclick="cancelDeletion()" style="background: #28a745; color: white; border: none; padding: 8px 15px; border-radius: 4px;">❌ Cancelar Exclusão</button>
+                    </div>
+                </div>
+
+                <!-- Formulário de exclusão -->
+                <div id="deletionForm">
+                    <p style="color: #666; font-size: 14px;">Para sua segurança, confirme todos os seus dados cadastrais:</p>
+                    
+                    <form id="accountDeletionForm">
+                        <div class="form-group">
+                            <label for="deleteEmail">Email:</label>
+                            <input type="email" id="deleteEmail" required placeholder="Digite seu email exato">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="deletePassword">Senha:</label>
+                            <input type="password" id="deletePassword" required placeholder="Digite sua senha atual">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="deleteFullName">Nome Completo:</label>
+                            <input type="text" id="deleteFullName" required placeholder="Digite seu nome completo exato">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="deleteCpf">CPF:</label>
+                            <input type="text" id="deleteCpf" required placeholder="Digite seu CPF">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="deleteDob">Data de Nascimento:</label>
+                            <input type="date" id="deleteDob" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="deleteUserKey">Chave de Tripla Validação:</label>
+                            <input type="text" id="deleteUserKey" required placeholder="Ex: ABC123" style="text-transform: uppercase;">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="deleteMathAnswer">🔢 Resolva: <span id="deleteMathQuestion">Carregando...</span></label>
+                            <input type="number" id="deleteMathAnswer" required placeholder="Digite a resposta">
+                            <input type="hidden" id="deleteMathResult">
+                        </div>
+                        
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #dc3545;">
+                            <label style="display: flex; align-items: center; cursor: pointer; font-weight: bold; color: #dc3545;">
+                                <input type="checkbox" id="confirmDeletion" required style="margin-right: 10px; transform: scale(1.2);">
+                                Confirmo que compreendo que esta ação é IRREVERSÍVEL e que aceito a exclusão permanente da minha conta
+                            </label>
+                        </div>
+                        
+                        <button type="button" class="btn" onclick="requestAccountDeletion()" style="background: #dc3545; color: white;">🗑️ Solicitar Exclusão da Conta</button>
+                    </form>
+                    
+                    <div id="deletionResult" class="result"></div>
+                </div>
+
+                <!-- Modal de declaração legal -->
+                <div id="deletionDeclarationModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 2000; overflow-y: auto;">
+                    <div style="position: relative; top: 50px; left: 50%; transform: translateX(-50%); background: white; padding: 30px; border-radius: 10px; max-width: 800px; margin: 50px auto;">
+                        <div style="text-align: center; margin-bottom: 30px;">
+                            <h2 style="color: #dc3545; margin-bottom: 10px;">⚖️ DECLARAÇÃO LEGAL</h2>
+                            <h3 style="color: #666; margin: 0;">Irrevogabilidade de Assinaturas Digitais</h3>
+                        </div>
+                        
+                        <div id="deletionDeclarationContent" style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; max-height: 400px; overflow-y: auto; text-align: justify; line-height: 1.6; font-size: 14px; border: 1px solid #ddd;">
+                            <!-- Conteúdo será preenchido via JavaScript -->
+                        </div>
+                        
+                        <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #ffc107;">
+                            <h4 style="color: #856404; margin: 0 0 10px 0;">⏰ Prazo de Reflexão - 24 Horas</h4>
+                            <p style="color: #856404; margin: 0; font-size: 14px;">
+                                <strong>Sua conta permanecerá ativa por 24 horas.</strong> Se você não acessar o sistema neste período, 
+                                a exclusão será executada automaticamente. Caso deseje cancelar, basta fazer login novamente.
+                            </p>
+                        </div>
+                        
+                        <div style="text-align: center; margin-top: 30px;">
+                            <p style="color: #dc3545; font-weight: bold; margin-bottom: 20px;">
+                                Escolha uma das opções abaixo:
+                            </p>
+                            <button onclick="confirmImmediateDeletion()" style="background: #dc3545; color: white; border: none; padding: 12px 20px; border-radius: 5px; margin: 0 10px; cursor: pointer; font-weight: bold;">
+                                🗑️ Excluir Imediatamente
+                            </button>
+                            <button onclick="acceptDeletionIn24Hours()" style="background: #ffc107; color: #856404; border: none; padding: 12px 20px; border-radius: 5px; margin: 0 10px; cursor: pointer; font-weight: bold;">
+                                ⏰ Aguardar 24 Horas
+                            </button>
+                            <button onclick="closeDeletionModal()" style="background: #28a745; color: white; border: none; padding: 12px 20px; border-radius: 5px; margin: 0 10px; cursor: pointer; font-weight: bold;">
+                                ❌ Cancelar Exclusão
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="docs-tab" class="tab-content">
+            <div class="documentation">
+                <h2>📋 DOCUMENTAÇÃO TÉCNICA E POLÍTICA DE ASSINATURA ELETRÔNICA</h2>
+                <h3>SISTEMA AUTENTICADOS DIGITAL</h3>
+
+                <div class="doc-section">
+                    <h3>1. INTRODUÇÃO</h3>
+                    <p>Este documento apresenta a documentação técnica e a política de assinatura eletrônica do Sistema Autenticados Digital, uma aplicação web desenvolvida para permitir a assinatura eletrônica de documentos em formato PDF, garantindo a <strong>autenticidade</strong>, <strong>integridade</strong>, <strong>rastreabilidade</strong> e o <strong>não repúdio</strong> dos documentos assinados.</p>
+                </div>
+
+                <div class="doc-section">
+                    <h3>🔐 FUNCIONALIDADES PRINCIPAIS</h3>
+                    
+                    <h4>Sistema de Autenticação Avançado</h4>
+                    <div style="background: #f0f8ff; padding: 15px; border-radius: 5px; margin: 10px 0;">
+                        <p><strong>✅ Cadastro Seguro de Usuários:</strong></p>
+                        <ul style="margin-left: 20px;">
+                            <li><strong>Validação rigorosa:</strong> CPF brasileiro, nome completo e email único</li>
+                            <li><strong>Senha criptografada:</strong> Hash criptografado com salt aleatório para máxima segurança</li>
+                            <li><strong>Chave de tripla validação:</strong> Código único baseado no email do usuário</li>
+                            <li><strong>Proteção anti-bot:</strong> Desafio matemático em cada operação</li>
+                        </ul>
+                        
+                        <p><strong>✅ Login com Múltiplas Camadas:</strong></p>
+                        <ul style="margin-left: 20px;">
+                            <li><strong>Email + Senha:</strong> Autenticação primária tradicional</li>
+                            <li><strong>Chave de validação:</strong> Segundo fator de autenticação único</li>
+                            <li><strong>Desafio matemático:</strong> Terceira camada contra automação maliciosa</li>
+                            <li><strong>Sessão protegida:</strong> Dados do usuário mantidos em memória segura</li>
+                        </ul>
+                        
+                        <p><strong>✅ Benefícios do Sistema de Autenticação:</strong></p>
+                        <ul style="margin-left: 20px;">
+                            <li><strong>Rastreabilidade total:</strong> Cada assinatura vinculada ao usuário autenticado</li>
+                            <li><strong>Não repúdio:</strong> Impossível negar autoria da assinatura</li>
+                            <li><strong>Auditoria completa:</strong> Registro de IP, localização e timestamp</li>
+                            <li><strong>Preenchimento automático:</strong> Dados pessoais carregados automaticamente</li>
+                            <li><strong>Segurança multicamada:</strong> Três fatores de autenticação independentes</li>
+                            <li><strong>Proteção contra fraude:</strong> Validação matemática em cada operação</li>
+                        </ul>
+                    </div>
+
+                    <h4>📄 Assinatura Digital de PDFs</h4>
+                    <ul>
+                        <li><strong>Carimbo visual:</strong> Marca gráfica na primeira página do documento</li>
+                        <li><strong>Metadados criptografados:</strong> Informações do assinante embebidas no PDF</li>
+                        <li><strong>Hash SHA-256:</strong> Impressão digital única do documento</li>
+                        <li><strong>Validação CRC16:</strong> Verificação de integridade conforme ISO IEC 14443</li>
+                        <li><strong>Assinatura HMAC:</strong> Autenticação criptográfica dos metadados</li>
+                    </ul>
+
+                    <h4>🔗 Sistema Blockchain</h4>
+                    <ul>
+                        <li><strong>Proof-of-Work:</strong> Algoritmo de consenso criptográfico</li>
+                        <li><strong>Registro distribuído:</strong> Armazenamento em blockchain externo</li>
+                        <li><strong>Timestamp verificável:</strong> Carimbo de tempo imutável</li>
+                        <li><strong>Validação cruzada:</strong> Múltiplas camadas de verificação</li>
+                    </ul>
+
+                    <h4>🛡️ Assinatura CAdES (Certificado Digital)</h4>
+                    <ul>
+                        <li><strong>Chaves RSA:</strong> Criptografia assimétrica de 2048 bits</li>
+                        <li><strong>Certificado X.509:</strong> Padrão internacional de PKI</li>
+                        <li><strong>Arquivo .p7s:</strong> Assinatura destacada PKCS#7</li>
+                        <li><strong>Download em ZIP:</strong> PDF + arquivo de assinatura</li>
+                    </ul>
+
+                    <h4>📋 Sistema OTS (Open Timestamps)</h4>
+                    <ul>
+                        <li><strong>Arquivos genéricos:</strong> Assinatura de qualquer tipo de arquivo</li>
+                        <li><strong>Criptografia AES-256:</strong> Proteção dos arquivos .ots</li>
+                        <li><strong>Blockchain público:</strong> Registro em rede distribuída</li>
+                        <li><strong>Verificação independente:</strong> Validação sem servidor central</li>
+                    </ul>
+                </div>
+
+                <div class="doc-section" style="background: #fff3e0; border-left-color: #ff9800;">
+                    <h3>📊 RESUMO DA VALIDADE</h3>
+                    
+                    <h4>❌ LIMITAÇÕES LEGAIS:</h4>
+                    <ul>
+                        <li><strong>Órgãos Públicos:</strong> Não aceito - requer certificado ICP-Brasil</li>
+                        <li><strong>Bancos e Financeiras:</strong> Não aceito - exige certificação oficial</li>
+                        <li><strong>Cartórios:</strong> Não substitui reconhecimento de firma</li>
+                        <li><strong>Contratos de alto valor:</strong> Pode não ser aceito em disputas judiciais</li>
+                        <li><strong>Documentos fiscais:</strong> Não atende legislação tributária</li>
+                    </ul>
+
+                    <h4>✅ ONDE TEM VALIDADE:</h4>
+                    <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
+                        <tr style="background: #f8f9fa;">
+                            <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Tipo de Documento</th>
+                            <th style="border: 1px solid #dee2e6; padding: 8px; text-align: center;">Status</th>
+                            <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Observações</th>
+                        </tr>
+                        <tr>
+                            <td style="border: 1px solid #dee2e6; padding: 8px;"><strong>Contratos Privados Simples</strong></td>
+                            <td style="border: 1px solid #dee2e6; padding: 8px; text-align: center; color: #28a745;"><strong>✅ VÁLIDO</strong></td>
+                            <td style="border: 1px solid #dee2e6; padding: 8px;">Lei 14.063/2020 - Assinatura eletrônica simples</td>
+                        </tr>
+                        <tr style="background: #f8f9fa;">
+                            <td style="border: 1px solid #dee2e6; padding: 8px;"><strong>Documentos Empresariais Internos</strong></td>
+                            <td style="border: 1px solid #dee2e6; padding: 8px; text-align: center; color: #28a745;"><strong>✅ VÁLIDO</strong></td>
+                            <td style="border: 1px solid #dee2e6; padding: 8px; color: #1a1a1a !important;">Workflows, aprovações, atas internas</td>
+                        </tr>
+                        <tr>
+                            <td style="border: 1px solid #dee2e6; padding: 8px;"><strong>Termos de Uso e Políticas</strong></td>
+                            <td style="border: 1px solid #dee2e6; padding: 8px; text-align: center; color: #28a745;"><strong>✅ VÁLIDO</strong></td>
+                            <td style="border: 1px solid #dee2e6; padding: 8px;">Aceite de políticas de privacidade e uso</td>
+                        </tr>
+                        <tr style="background: #f8f9fa;">
+                            <td style="border: 1px solid #dee2e6; padding: 8px;"><strong>Contratos de Baixo Risco</strong></td>
+                            <td style="border: 1px solid #dee2e6; padding: 8px; text-align: center; color: #28a745;"><strong>✅ VÁLIDO</strong></td>
+                            <td style="border: 1px solid #dee2e6; padding: 8px; color: #1a1a1a !important;">Acordos comerciais de menor complexidade</td>
+                        </tr>
+                        <tr>
+                            <td style="border: 1px solid #dee2e6; padding: 8px;"><strong>Prova de Integridade Técnica</strong></td>
+                            <td style="border: 1px solid #dee2e6; padding: 8px; text-align: center; color: #28a745;"><strong>✅ VÁLIDO</strong></td>
+                            <td style="border: 1px solid #dee2e6; padding: 8px;">Perícia técnica e auditoria forense</td>
+                        </tr>
+                        <tr style="background: #f8f9fa;">
+                            <td style="border: 1px solid #dee2e6; padding: 8px;"><strong>Controle de Versões</strong></td>
+                            <td style="border: 1px solid #dee2e6; padding: 8px; text-align: center; color: #28a745;"><strong>✅ VÁLIDO</strong></td>
+                            <td style="border: 1px solid #dee2e6; padding: 8px; color: #1a1a1a !important;">Rastreabilidade de alterações documentais</td>
+                        </tr>
+                        <tr>
+                            <td style="border: 1px solid #dee2e6; padding: 8px;"><strong>Evidência em Disputas</strong></td>
+                            <td style="border: 1px solid #dee2e6; padding: 8px; text-align: center; color: #ffc107;"><strong>⚠️ LIMITADO</strong></td>
+                            <td style="border: 1px solid #dee2e6; padding: 8px;">Pode ser aceito como evidência complementar</td>
+                        </tr>
+                    </table>
+
+                    <div style="background:rgb(0, 4, 245); padding: 15px; border-radius: 8px; margin: 15px 0;">
+                        <h4 style="color:rgb(21, 255, 0); margin: 0 0 10px 0;">⚖️ Base Legal da Validade:</h4>
+                        <ul style="margin-left: 20px; color:rgb(0, 255, 21);">
+                            <li><strong>Lei 14.063/2020:</strong> Estabelece o uso de assinaturas eletrônicas no Brasil</li>
+                            <li><strong>Artigo 4º:</strong> Assinatura eletrônica simples - dados anexos ou logicamente associados</li>
+                            <li><strong>Código Civil:</strong> Validade para negócios jurídicos entre particulares</li>
+                            <li><strong>Marco Civil da Internet:</strong> Reconhece autenticidade digital</li>
+                        </ul>
+                    </div>
+
+                    <div style="background: #ffebee; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                        <h4 style="color: #c62828; margin: 0 0 10px 0;">⚠️ IMPORTANTE:</h4>
+                        <ul style="margin-left: 20px; color: #c62828;">
+                            <li>Esta assinatura <strong>NÃO substitui</strong> certificados digitais ICP-Brasil</li>
+                            <li><strong>NÃO é válida</strong> para documentos que exigem certificação oficial</li>
+                            <li>Para órgãos públicos, use <strong>gov.br</strong> ou certificados A1/A3</li>
+                            <li>Em caso de dúvida sobre validade, <strong>consulte um advogado</strong></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="doc-section">
+                    <h3>2. DOCUMENTAÇÃO TÉCNICA</h3>
+                    
+                    <h4>2.1 Arquitetura do Sistema</h4>
+                    <p>O sistema implementa um mecanismo de tripla validação, composto por:</p>
+                    <ul>
+                        <li>Geração de hash exclusivo e inalterável do documento</li>
+                        <li>Registro do hash em banco de dados local criptografado, em formato JSON</li>
+                        <li>Registro de assinatura digital no formato blockchain em banco de dados externo</li>
+                    </ul>
+                    
+                    <p>Adicionalmente, o sistema executa:</p>
+                    <ul>
+                        <li>Validação de dados de entrada (nome, CPF, data de nascimento, arquivo PDF, timestamp)</li>
+                        <li>Validação do CPF e nome completo</li>
+                        <li>Geração de hash do arquivo original e timestamp com fuso horário</li>
+                        <li>Inserção de carimbo visual na primeira página do PDF</li>
+                        <li>Validação de redundância cíclica (conforme ISO IEC 14443)</li>
+                        <li>Geração de assinatura digital dos metadados com chave secreta interna</li>
+                        <li>Registro dos metadados no arquivo PDF e no banco de dados local</li>
+                    </ul>
+
+                    <h4>2.2 Componentes Essenciais</h4>
+                    <p>Incluem: Manipulação de arquivos PDF; Geração de hashes (SHA-256); Assinaturas digitais (HMAC-SHA256); Codificação/decodificação de dados; Manipulação de datas com fuso horário; Criptografia de dados; Manipulação de expressões regulares; Geração e manipulação de dados JSON.</p>
+
+                    <h4>2.3 Funcionalidades</h4>
+                    <p>Incluem: Rota principal para assinatura; Validação de CPF e nome; Geração e validação de hashes e timestamps; Criptografia e persistência de dados; Validação de assinatura de PDF; Registro de dados em base local e externa; Carimbo visual em PDF.</p>
+                </div>
+
+                <div class="doc-section">
+                    <h3>3. POLÍTICA DE ASSINATURA ELETRÔNICA</h3>
+                    
+                    <h4>3.1 Objetivo</h4>
+                    <p>Estabelecer os critérios técnicos da assinatura eletrônica no Sistema Autenticados Digital.</p>
+
+                    <h4>3.2 Âmbito</h4>
+                    <p>Aplica-se à assinatura de documentos PDF com armazenamento de evidências no próprio documento e em base de dados criptografada.</p>
+
+                    <h4>3.3 Definições</h4>
+                    <ul>
+                        <li><strong>Assinatura Eletrônica:</strong> Associação de dados que comprova autoria e integridade</li>
+                        <li><strong>TOE:</strong> Sistema de assinatura baseado em aplicação web e servidor</li>
+                        <li><strong>Metadados de Assinatura:</strong> Informações técnicas no PDF</li>
+                        <li><strong>Validação de Redundância Cíclica:</strong> Autenticação da data/hora da assinatura</li>
+                        <li><strong>Registro Externo:</strong> Registro adicional em banco externo tipo blockchain</li>
+                    </ul>
+
+                    <h4>3.4 Dados Registrados</h4>
+                    <p><strong>Incluem:</strong> Nome, CPF, data de nascimento; IP público, data/hora com fuso horário nos moldes da ISO 8601; Navegador, sistema, localização (se autorizado); Hashs do PDF original e final; Código de integridade da data/hora; Timestamp do aceite.</p>
+                    <p><strong>Armazenamento:</strong> Como metadados no PDF; Em banco de dados local criptografado; Em banco de dados externo com assinatura blockchain.</p>
+
+                    <h4>3.5 Medidas de Segurança</h4>
+                    <p>Chave secreta interna; Sem dependência externa para validação; Algoritmos SHA-256 e HMAC-SHA256; Criptografia dos registros; Validação de redundância cíclica; Registro em blockchain.</p>
+
+                    <h4>3.6 Boas práticas estabelecidas pelas Normas ISO de Segurança</h4>
+                    <p>Embora o sistema não possua certificação formal das normas ISO, ele segue as boas práticas estabelecidas pelas seguintes normas internacionais de segurança:</p>
+                    
+                    <div style="background: #f0f8ff; padding: 15px; border-radius: 5px; margin: 10px 0;">
+                        <p><strong>✅ ISO/IEC 15408 (Common Criteria) – Partes 1, 2 e 3:</strong></p>
+                        <ul style="margin-left: 20px;">
+                            <li>Implementa requisitos funcionais de segurança como autenticação, integridade de dados e proteção contra alterações</li>
+                            <li>Utiliza metadados, assinatura de dados e verificação por hash e CRC (requisitos FPT, FDP, FIA)</li>
+                            <li>Possui Security Target (ST) alinhado com esta norma</li>
+                        </ul>
+                        
+                        <p><strong>✅ ISO/IEC 27001:2022 (Segurança da Informação – SGSI):</strong></p>
+                        <ul style="margin-left: 20px;">
+                            <li>Controle de acesso aos dados com criptografia</li>
+                            <li>Registro de logs e rastros de auditoria</li>
+                            <li>Criptografia de dados em repouso</li>
+                            <li>Redução de risco de vazamento de informações</li>
+                            <li>Não dependência de terceiros (minimiza vetores de ataque externos)</li>
+                        </ul>
+                        
+                        <p><strong>✅ ISO/IEC 27002:2022 (Controles de Segurança Complementares):</strong></p>
+                        <ul style="margin-left: 20px;">
+                            <li>Criptografia avançada (Fernet, HMAC-SHA256)</li>
+                            <li>Isolamento de chaves secretas (chave compilada no código)</li>
+                            <li>Confidencialidade total (dados inacessíveis inclusive ao desenvolvedor)</li>
+                            <li>Integridade garantida via finalHash e originalHash</li>
+                        </ul>
+                        
+                        <p><strong>✅ ISO/IEC 25010 (Qualidade de Software):</strong></p>
+                        <ul style="margin-left: 20px;">
+                            <li>Características funcionais e de confiabilidade implementadas</li>
+                            <li>Segurança por design</li>
+                            <li>Precisão funcional (função de assinatura cumpre sua proposta)</li>
+                            <li>Integridade de dados garantida</li>
+                            <li>Tolerância a falhas com validação rigorosa</li>
+                            <li>Rastreabilidade completa dos processos</li>
+                        </ul>
+                        
+                        <p><strong>✅ ISO/IEC 14533 (Assinatura Digital Long-Term) – Parte 1:</strong></p>
+                        <ul style="margin-left: 20px;">
+                            <li>Mantém dados persistentes com hash e assinatura de tempo</li>
+                            <li>Aplicação de conceito de carimbo técnico verificável</li>
+                            <li>O finalHash garante integridade visual a longo prazo</li>
+                        </ul>
+                        
+                        <p><strong>✅ ISO/IEC 14443 (Validação de Redundância Cíclica):</strong></p>
+                        <ul style="margin-left: 20px;">
+                            <li>Uso do CRC16-ISO/IEC 14443 para validar autenticidade da data/hora</li>
+                            <li>Implementação direta dos algoritmos desta norma</li>
+                            <li>Utiliza código de redundância cíclica para autenticação de dois fatores</li>
+                        </ul>
+                        
+                        <p><strong>✅ ISO/IEC 29100 (Privacidade e Proteção de Dados Pessoais):</strong></p>
+                        <ul style="margin-left: 20px;">
+                            <li>Alinhado com princípios de privacidade</li>
+                            <li>Finalidade definida e específica para os dados coletados</li>
+                            <li>Política de não compartilhamento com terceiros</li>
+                            <li>Minimização de dados coletados</li>
+                            <li>Confidencialidade e segurança por design</li>
+                        </ul>
+                    </div>
+
+                    <h4>3.7 Consentimento</h4>
+                    <p>Ao assinar: O usuário declara ciência do conteúdo; Autoriza o tratamento dos dados descritos.</p>
+
+                    <h4>3.8 Validade</h4>
+                    <p><strong>Garante:</strong> Autenticidade; Integridade; Rastreabilidade; Não repúdio.</p>
+                    <p><em>Nota: Não utiliza certificados digitais específicos.</em></p>
+
+                    <h4>3.9 Tratamento de Dados Pessoais</h4>
+                    <p>Finalidade restrita à autenticação; Armazenamento criptografado; Sem compartilhamento com terceiros; Atende às solicitações do titular.</p>
+                </div>
+
+                <div class="doc-section">
+                    <h3>4. POLÍTICA DE PRIVACIDADE E LGPD</h3>
+                    <p>Todos os dados coletados no processo de assinatura eletrônica são tratados em conformidade com a <strong>Lei nº 13.709/2018 – Lei Geral de Proteção de Dados Pessoais (LGPD)</strong>.</p>
+                    
+                    <p>A coleta, o armazenamento e o tratamento de informações pessoais, como nome, CPF, data de nascimento, IP, localização e demais dados técnicos, têm como finalidade exclusiva a garantia da integridade, autenticidade, rastreabilidade e não repúdio dos documentos assinados eletronicamente.</p>
+                    
+                    <p>Os dados são armazenados de forma criptografada em banco de dados local, inacessível inclusive ao desenvolvedor do sistema, não sendo possível sua leitura ou descriptografia sem a chave original de criptografia, que não é distribuída ou exposta em ambiente algum.</p>
+                    
+                    <p>Não há compartilhamento, cessão ou exposição dos dados com terceiros, tampouco integração com APIs externas ou bases públicas. Todo o tratamento é realizado internamente, e os dados são utilizados única e exclusivamente para validar a integridade dos documentos assinados. Nenhuma informação é utilizada para fins comerciais, analíticos ou de marketing.</p>
+                </div>
+
+                <div class="doc-section">
+                    <h3>5. SECURITY TARGET SIMPLIFICADO</h3>
+                    
+                    <h4>5.1 Nome do Produto</h4>
+                    <p>Sistema Autenticados Digital</p>
+
+                    <h4>5.2 Descrição do TOE</h4>
+                    <p>Sistema de assinatura PDF com validação tripla e registro blockchain.</p>
+
+                    <h4>5.3 Escopo</h4> 
+                    <p><strong>Inclui:</strong> Assinatura digital com carimbo visual; Registro de metadados e assinaturas; Criptografia local e validação cruzada; Registro em blockchain.</p>
+                    <p><strong>Não inclui:</strong> Certificados digitais do usuário; Chaves assimétricas; Proteção física ou ambiente do cliente.</p>
+
+                    <h4>5.4 Ameaças</h4>
+                    <ul>
+                        <li>T1: Alterar visual do PDF</li>
+                        <li>T2: Modificar metadados</li>
+                        <li>T3: Forjar assinatura</li>
+                        <li>T4: Reutilizar assinatura antiga</li>
+                        <li>T5: Acesso indevido ao banco local</li>
+                        <li>T6: Alterar registro blockchain</li>
+                        <li>T7: Alterar data/hora da assinatura</li>
+                    </ul>
+
+                    <h4>5.5 Objetivos de Segurança</h4>
+                    <p>O1: Garantir integridade do PDF; O2: Vincular assinatura ao usuário; O3: Proteger metadados; O4: Proteger conteúdo visual; O5: Criptografar banco local; O6: Garantir integridade da blockchain; O7: Validar data/hora</p>
+
+                    <h4>5.6 Nível de Garantia</h4>
+                    <p><strong>EAL2 (Testado Estruturalmente):</strong> Justificado por código documentado, testes, criptografia e uso de blockchain.</p>
+                </div>
+            </div>        </div>
+
+    <!-- Modal do Termo de Aceite -->
+    <div id="termsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 3000; overflow-y: auto;">
+        <div style="position: relative; top: 50px; left: 50%; transform: translateX(-50%); background: #1e1e2e; padding: 30px; border-radius: 10px; max-width: 900px; margin: 50px auto; border: 2px solid #444;">
+            <div style="text-align: center; margin-bottom: 30px;">
+                <h2 style="color: #64b5f6; margin-bottom: 10px;">📋 TERMO DE ACEITE E CIÊNCIA</h2>
+                <h3 style="color: #b0b0b0; margin: 0;">Sobre a Irrevogabilidade das Assinaturas Eletrônicas</h3>
+                <h4 style="color: #81c784; margin: 10px 0 0 0;">SISTEMA AUTENTICADOS DIGITAL</h4>
+            </div>
+            
+            <div style="background: #2a2a3e; padding: 25px; border-radius: 8px; margin: 20px 0; max-height: 500px; overflow-y: auto; text-align: justify; line-height: 1.7; font-size: 14px; border: 1px solid #444; color: #e0e0e0;">
+                <p style="color: #e0e0e0; margin-bottom: 20px; text-indent: 0; font-weight: 600;">
+                    Pelo presente instrumento, o <strong>USUÁRIO</strong> declara ter lido, compreendido e aceitado integralmente as disposições abaixo, as quais estabelecem as condições de uso, os efeitos jurídicos e a natureza irrevogável das assinaturas eletrônicas realizadas por meio da aplicação Sistema Autenticados Digital.
+                </p>
+
+                <h4 style="color: #64b5f6; margin: 25px 0 15px 0;">1. DO OBJETO</h4>
+                <p style="color: #e0e0e0; margin-bottom: 15px; text-indent: 20px;">
+                    O presente termo tem por objeto registrar a ciência e o aceite do USUÁRIO quanto à natureza jurídica das assinaturas eletrônicas realizadas no âmbito do Sistema Autenticados Digital, suas implicações quanto à validade, integridade, rastreabilidade e irretratabilidade, bem como os efeitos da eventual exclusão de seus dados cadastrais.
+                </p>
+
+                <h4 style="color: #64b5f6; margin: 25px 0 15px 0;">2. DA NATUREZA DA ASSINATURA ELETRÔNICA</h4>
+                <p style="color: #e0e0e0; margin-bottom: 15px; text-indent: 20px;">
+                    Nos termos do art. 4º, inciso I, alínea "a", da Lei nº 14.063/2020, as assinaturas eletrônicas simples utilizadas na plataforma permitem a identificação inequívoca do signatário por meio de dados associados logicamente ao documento assinado, de modo que possuem validade jurídica plena para negócios jurídicos entre particulares, conforme o disposto no Código Civil Brasileiro (Lei nº 10.406/2002).
+                </p>
+                <p style="color: #e0e0e0; margin-bottom: 15px; text-indent: 20px;">
+                    As assinaturas realizadas por meio da plataforma são dotadas de metadados técnicos criptografados, contendo, entre outros, identificação do assinante, hash SHA-256 do conteúdo, timestamp com validação de integridade (CRC16), e, quando aplicável, registro em blockchain com carimbo técnico imutável e verificável.
+                </p>
+
+                <h4 style="color: #64b5f6; margin: 25px 0 15px 0;">3. DA IRREVOGABILIDADE DAS ASSINATURAS ELETRÔNICAS</h4>
+                <p style="color: #e0e0e0; margin-bottom: 15px; text-indent: 20px;">
+                    As assinaturas eletrônicas realizadas por meio do Sistema Autenticados Digital são <strong>irrevogáveis, irretratáveis e indissociáveis</strong> dos documentos aos quais foram vinculadas. Em conformidade com o disposto no art. 1.194 do Código Civil, o USUÁRIO reconhece o dever de conservação da escrituração e documentos assinados, não podendo pleitear a exclusão ou invalidação de assinaturas efetuadas antes de eventual exclusão de seu cadastro na plataforma.
+                </p>
+                <p style="color: #e0e0e0; margin-bottom: 15px; text-indent: 20px;">
+                    Cada documento assinado constitui entidade documental autônoma e tecnicamente inviolável, sendo os dados da assinatura embutidos no próprio arquivo em formato permanente. Tais dados não são passíveis de remoção ou alteração posterior, mesmo com a eliminação do cadastro do USUÁRIO.
+                </p>
+
+                <h4 style="color: #64b5f6; margin: 25px 0 15px 0;">4. DA EXCLUSÃO DO CADASTRO</h4>
+                <p style="color: #e0e0e0; margin-bottom: 15px; text-indent: 20px;">
+                    O USUÁRIO poderá, a qualquer tempo, requerer a exclusão definitiva de seus dados pessoais e credenciais de acesso à plataforma, nos termos da Lei nº 13.709/2018 (Lei Geral de Proteção de Dados Pessoais – LGPD). Entretanto, declara ciência de que tal exclusão <strong>não acarretará a nulidade, revogação ou retirada das assinaturas eletrônicas anteriormente realizadas</strong>, as quais permanecerão válidas, verificáveis e com pleno valor jurídico.
+                </p>
+
+                <h4 style="color: #64b5f6; margin: 25px 0 15px 0;">5. DA RESPONSABILIDADE PELO COMPARTILHAMENTO DE DOCUMENTOS</h4>
+                <p style="color: #e0e0e0; margin-bottom: 15px; text-indent: 20px;">
+                    O USUÁRIO declara estar ciente de que a verificação da autenticidade das assinaturas pode ser realizada por qualquer terceiro que tenha posse legítima do documento assinado. Sendo assim, é de inteira responsabilidade do USUÁRIO zelar pela guarda e sigilo dos arquivos assinados, bem como restringir seu compartilhamento somente às pessoas autorizadas, eximindo a plataforma de qualquer responsabilidade decorrente de uso indevido ou divulgação indevida de tais documentos por terceiros.
+                </p>
+
+                <h4 style="color: #64b5f6; margin: 25px 0 15px 0;">6. DA VALIDADE JURÍDICA E FUNDAMENTO LEGAL</h4>
+                <p style="color: #e0e0e0; margin-bottom: 15px; text-indent: 20px;">
+                    O Sistema Autenticados Digital é regido pelos dispositivos legais constantes na Lei nº 10.406/2002 (Código Civil) e na Lei nº 14.063/2020, estando tecnicamente alinhado às melhores práticas internacionais de segurança da informação, conforme recomendações das normas ISO/IEC 27001, 27002, 15408, 25010, 29100 e 14533.
+                </p>
+                <p style="color: #e0e0e0; margin-bottom: 15px; text-indent: 20px;">
+                    As assinaturas eletrônicas simples realizadas na plataforma têm validade jurídica plena para fins de celebração de contratos, aceites de políticas, controle de documentos empresariais e quaisquer atos cuja legislação vigente não exija certificação digital emitida no âmbito da ICP-Brasil.
+                </p>
+            </div>
+            
+            <div style="background: #1b5e20; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #2e7d32;">
+                <h4 style="color: #c8e6c9; margin: 0 0 10px 0;">✅ DECLARAÇÃO DE CIÊNCIA</h4>
+                <p style="color: #c8e6c9; margin: 0; font-size: 14px;">
+                    <strong>Ao aceitar os termos de uso na assinatura, o usuário declara ter lido e compreendido 
+                    integralmente este documento e concorda com todas as disposições aqui estabelecidas.</strong>
+                </p>
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px;">
+                <button onclick="closeTermsModal()" style="background: #64b5f6; color: white; border: none; padding: 12px 30px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 16px;">
+                    ✅ Entendi os Termos
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <footer style="text-align: center; margin-top: 30px; padding: 20px; background: rgba(42, 42, 62, 0.8) !important; color: #e0e0e0 !important; border-radius: 5px; font-size: 12px;">
+        <strong>Copyright © Delean Mafra</strong><br>
+        Todos os direitos reservados
+    </footer>
+
+    <script src="{{ url_for('static', filename='assinar_pdfs.js') }}"></script>
+
+</body>
+</html>
